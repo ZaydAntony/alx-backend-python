@@ -1,0 +1,62 @@
+#!/bin/bash
+
+echo "🚀 Starting Kubernetes local setup..."
+
+# -----------------------------
+# 1. Check if Minikube is installed
+# -----------------------------
+if ! command -v minikube &> /dev/null
+then
+    echo "❗ Minikube not found. Installing..."
+
+    # Install minikube (Linux)
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        sudo install minikube-linux-amd64 /usr/local/bin/minikube
+        rm minikube-linux-amd64
+
+    # Install minikube (MacOS)
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        brew install minikube
+    else
+        echo "❌ Unsupported OS. Please install Minikube manually."
+        exit 1
+    fi
+
+    echo "✅ Minikube installed successfully!"
+else
+    echo "✔ Minikube is already installed."
+fi
+
+# -----------------------------
+# 2. Start Minikube cluster
+# -----------------------------
+echo "⏳ Starting Minikube cluster..."
+minikube start
+
+if [ $? -ne 0 ]; then
+  echo "❌ Failed to start Minikube cluster."
+  exit 1
+fi
+echo "✅ Minikube cluster started!"
+
+# -----------------------------
+# 3. Verify cluster info
+# -----------------------------
+echo "🔍 Verifying cluster status..."
+kubectl cluster-info
+
+if [ $? -ne 0 ]; then
+  echo "❌ Cluster is not running."
+  exit 1
+fi
+
+echo "✅ Cluster is running properly!"
+
+# -----------------------------
+# 4. Retrieve available pods
+# -----------------------------
+echo "📦 Fetching available pods..."
+kubectl get pods -A
+
+echo "🎉 Kubernetes setup completed successfully!"
