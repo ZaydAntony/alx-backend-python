@@ -1,0 +1,39 @@
+#!/bin/bash
+
+echo "Scaling Django app deployment..."
+
+# ------------------------------------
+# Scale deployment to 3 replicas
+# ------------------------------------
+kubectl scale deployment django-messaging-app --replicas=3
+
+# ------------------------------------
+# Verify multiple pods are running
+# ------------------------------------
+echo "🔍 Checking running pods..."
+kubectl get pods
+
+# ------------------------------------
+# Load testing using wrk
+# ------------------------------------
+echo "⚡ Running load test with wrk..."
+echo "Make sure your service is accessible before this step."
+
+# Port-forward service for local load testing
+kubectl port-forward service/django-messaging-service 8080:80 &
+PORT_FORWARD_PID=$!
+
+# Give port-forward time to start
+sleep 5
+
+# Run wrk test
+wrk -t2 -c20 -d30s http://127.0.0.1:8080
+
+# Stop port-forward
+kill $PORT_FORWARD_PID
+
+# ------------------------------------
+# Monitor resource usage
+# ------------------------------------
+echo "Monitoring resource usage..."
+kubectl top pods
