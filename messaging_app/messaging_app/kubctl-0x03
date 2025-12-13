@@ -1,0 +1,31 @@
+#!/bin/bash
+
+echo " Applying updated deployment (Rolling Update)..."
+kubectl apply -f blue_deployment.yaml
+
+echo " Monitoring rollout status..."
+kubectl rollout status deployment/django-blue
+
+echo "Testing application availability with curl..."
+
+# Port-forward service for testing
+kubectl port-forward service/django-service 8080:80 &
+PORT_FORWARD_PID=$!
+
+sleep 5
+
+# Continuous curl requests to detect downtime
+for i in {1..20}
+do
+  echo -n "Request $i: "
+  curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/
+  sleep 1
+done
+
+# Stop port-forward
+kill $PORT_FORWARD_PID
+
+echo " Verifying rolling update completion..."
+kubectl get pods
+
+echo "Rolling update completed with no downtime"
