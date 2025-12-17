@@ -1,31 +1,23 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE = "zaydantony123@gmail.com/messaging_app"
-        DOCKER_TAG = "latest"
-    }
-
-    tools {
-        python 'python3'
-    }
-
     stages {
 
         stage('Checkout Code') {
             steps {
-                git credentialsId: .env(github-creds),
-                    url: 'https://github.com/ZaydAntony/alx-backend-python.git'
+                git branch: 'master',
+                    credentialsId: .env(github-creds),
+                    url: 'https://github.com/zaydAntony/alx-backend-python.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh '''
-                python -m venv venv
+                python3 -m venv venv
                 . venv/bin/activate
-                pip install --upgrade pip
-                pip install -r messaging_app/requirements.txt
+                pip3 install --upgrade pip
+                pip3 install -r messaging_app/requirements.txt
                 '''
             }
         }
@@ -34,48 +26,15 @@ pipeline {
             steps {
                 sh '''
                 . venv/bin/activate
-                pytest messaging_app --junitxml=report.xml
-                '''
-            
-        }
-
-        stage('Publish Test Report') {
-            steps {
-                junit 'report.xml'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                cd messaging_app
-                docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                pytest messaging_app --junitxml=test-report.xml
                 '''
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Generate Test Report') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: .env(dockerhub-creds),
-                    usernameVariable: .env(DOCKER_USER),
-                    passwordVariable: .env(DOCKER_PASS)
-                )]) {
-                    sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    docker push $DOCKER_IMAGE:$DOCKER_TAG
-                    '''
-                }
+                junit 'test-report.xml'
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Docker image built and pushed successfully'
-        }
-        failure {
-            echo 'Pipeline failed'
         }
     }
 }
