@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "zaydantony123@gmail.com/messaging_app"
+        DOCKER_TAG = "latest"
+    }
+
     tools {
         python 'python3'
     }
@@ -9,7 +14,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                git credentialsId: 'github-creds',
+                git credentialsId: .env(github-creds),
                     url: 'https://github.com/ZaydAntony/alx-backend-python.git'
             }
         }
@@ -31,7 +36,7 @@ pipeline {
                 . venv/bin/activate
                 pytest messaging_app --junitxml=report.xml
                 '''
-            }
+            
         }
 
         stage('Publish Test Report') {
@@ -39,17 +44,38 @@ pipeline {
                 junit 'report.xml'
             }
         }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                cd messaging_app
+                docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: .env(dockerhub-creds),
+                    usernameVariable: .env(DOCKER_USER),
+                    passwordVariable: .env(DOCKER_PASS)
+                )]) {
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker push $DOCKER_IMAGE:$DOCKER_TAG
+                    '''
+                }
+            }
+        }
     }
 
     post {
-        always {
-            echo 'Pipeline execution completed'
+        success {
+            echo 'Docker image built and pushed successfully'
         }
         failure {
-            echo 'Tests failed'
-        }
-        success {
-            echo 'All tests passed successfully'
+            echo 'Pipeline failed'
         }
     }
 }
